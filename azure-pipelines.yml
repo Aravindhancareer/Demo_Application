@@ -104,7 +104,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: 'AzureResourceGroupDeployment'
-      Contents: 'WebSiteSQLDatabase*.json'
+      Contents: 'azuredeploy*.json'
       TargetFolder: '$(build.artifactstagingdirectory)'
 
   - task: PublishBuildArtifacts@1
