@@ -1,241 +1,114 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
-pr:
+trigger:
   branches:
     include:
-      - dev
-  paths:
-    exclude:
-      - README.md
+    - Master
 
-trigger:
- branches:
-   include:
-     - master
- paths:
-   exclude:
-     - README.md
-
-stages:
-- stage: Build_Stage
-  displayName: Build Apps
-  jobs:
-
-  - job: WebApp
-    displayName: Build Web App
-    pool:
-      name: Hosted Windows 2019 with VS2019 
-      vmImage: 'windows-2019'
-    variables:
-      BuildConfiguration: release
-    steps:
-
-    - task: UseDotNet@2
-      displayName: Install .NET 6 sdk
-      inputs:
-        packageType: sdk
-        version: 6.0.x
-        installationPath: $(Agent.ToolsDirectory)/dotnet
-
-    - task: DotNetCoreCLI@2
-      displayName: Restore Nuget Packages
-      inputs:
-        command: restore
-        projects: '**/WebApp.csproj'
-    
-
-    - task: SonarCloudPrepare@1
-      displayName: Prepare analysis on SonarCloud
-      inputs:
-        SonarCloud: SonarCloud
-        organization: aravindhancareer
-        projectKey: DemoApplication008
-
-    - task: DotNetCoreCLI@2
-      displayName: Build WebApp
-      inputs:
-        projects: '**/WebApp.csproj'
-        arguments: '--configuration $(BuildConfiguration)'
-
-    - task: DotNetCoreCLI@2
-      displayName: Run Unit Tests
-      inputs:
-        command: test
-        projects: '**/*UnitTest*.csproj'
-        arguments: '--configuration $(BuildConfiguration)'
-
-    - task: DotNetCoreCLI@2
-      displayName: Create WebApp.zip
-      inputs:
-        command: publish
-        publishWebProjects: True
-        arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
-        zipAfterPublish: True
-
-    - task: SonarCloudAnalyze@1
-      displayName: Run Code Analysis
-
-    - task: SonarCloudPublish@1
-      displayName: Publish Quality Gate Result
-      
-
-    - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (WebApp.zip)
-      inputs:
-        PathtoPublish: '$(build.artifactstagingdirectory)'
-        ArtifactName: drop
-
-  - job: Database
-    displayName: Build Database
-    pool:
-      vmImage: 'windows-2019'
-      demands: msbuild
-    steps:
-
-    - task: MSBuild@1
-      displayName: Build WebApp.Database.sqlproj
-      inputs:
-        solution: WebApp.Database/WebApp.Database.sqlproj
-        msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
-
-    - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Dacpac)
-      inputs:
-        ArtifactName: dacpac
-
-
-  - job: Infrastructure
-    displayName: Publish Infra files
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact: ARM templates'
-      inputs:
-        PathtoPublish: AzureResourceGroupDeployment
-        ArtifactName: arm
-
-- stage: Dev_Stage
-  displayName: Create & Deploy to Dev
-  dependsOn: Build_Stage
+jobs:
+- job: WebApp
+  displayName: 'Build Web App'
+  pool:
+    vmImage: 'windows-latest'
   variables:
-    azureSubscription: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-    ResourceGroupName: '$(Prefix)-$(Release.EnvironmentName)-$(UniqueId)-RG'
-    Database.Admin: 'Aravindhan'
-    Database.Password: '@Aa123456' # to be secured in Key Vault
-    Database.Name: 'EmployeesDB'
-    WebAppName: '$(Prefix)-$(Release.EnvironmentName)-$(UniqueId)'
-    WebAppNameUrl: 'https://$(WebAppName).azurewebsites.net/'
-    SqlServerName: '$(Prefix)-sql-$(Release.EnvironmentName)-$(UniqueId)'
-    Prefix: 'tunis'
-    Release.EnvironmentName: 'dev'
-    UniqueId: '1280' #'$(Build.BuildId)'
-    hostingPlanName: '$(Prefix)-service-plan'
+    solution: '**/*.sln'
+    buildPlatform: 'Any CPU'
+    buildConfiguration: 'Release'
 
-  jobs:
-  - job: Create_DEV
-    displayName: Create DEV
-    pool:
-      vmImage: 'windows-2019'
-    steps:
+  steps:
+  - task: NuGetToolInstaller@1
 
-    - checkout: none
-    - task: DownloadBuildArtifacts@0
-      displayName: Download ARM templates
-      inputs:
-        artifactName: arm
-        downloadPath: $(System.DefaultWorkingDirectory)
+  - task: NuGetCommand@2
+    inputs:
+     restoreSolution: '$(solution)'
 
-    - task: AzureResourceGroupDeployment@2
-      displayName: Validate ARM templates
-      
-      inputs:
-        azureSubscription: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-        action: 'Create Or Update Resource Group'
-        resourceGroupName: '$(ResourceGroupName)'
-        location: 'East US'
-        templateLocation: 'Linked artifact'
-        csmFile: '$(System.DefaultWorkingDirectory)/arm/WebSiteSQLDatabase.json'
-        csmParametersFile: '$(System.DefaultWorkingDirectory)/arm/WebSiteSQLDatabase.parameters.json'
-        overrideParameters: '-hostingPlanName $(hostingPlanName) -skuName "F1" -skuCapacity 1 -administratorLogin $(Database.Admin) -administratorLoginPassword $(Database.Password) -databaseName $(Database.Name) -collation "SQL_Latin1_General_CP1_CI_AS" -edition "Basic" -maxSizeBytes "1073741824" -requestedServiceObjectiveName "Basic" -webSiteName $(WebAppName) -sqlserverName $(SqlServerName)'
-        deploymentMode: 'Validation'
 
-    - task: AzureCLI@2
-      displayName: Preview Template Changes (What-If)
-      inputs:
-        workingDirectory: $(System.DefaultWorkingDirectory)/arm/
-        azureSubscription: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: 'az deployment group what-if --resource-group $(ResourceGroupName) --name rollout01 --template-file  WebSiteSQLDatabase.json --parameters WebSiteSQLDatabase.parameters.json'
-        arguments: '-hostingPlanName $(hostingPlanName) -skuName "F1" -skuCapacity 1 -administratorLogin $(Database.Admin) -administratorLoginPassword $(Database.Password) -databaseName $(Database.Name) -collation "SQL_Latin1_General_CP1_CI_AS" -edition "Basic" -maxSizeBytes "1073741824" -requestedServiceObjectiveName "Basic" -webSiteName $(WebAppName) -sqlserverName $(SqlServerName)'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'restore'
+      projects: |
+        **/*.csproj
+        !**/*SeleniumUiTests.csproj
+      feedsToUse: 'select'
 
-    - task: AzureResourceManagerTemplateDeployment@3
-      displayName: Deploy ARM templates
-      inputs:
-        deploymentScope: 'Resource Group'
-        azureResourceManagerConnection: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-        subscriptionId: '4f8f86fb-988e-48bd-92a1-f49159c8f1d2'
-        action: 'Create Or Update Resource Group'
-        resourceGroupName: '$(ResourceGroupName)'
-        location: 'West Europe'
-        templateLocation: 'Linked artifact'
-        csmFile: '$(System.DefaultWorkingDirectory)/arm/WebSiteSQLDatabase.json'
-        csmParametersFile: '$(System.DefaultWorkingDirectory)/arm/WebSiteSQLDatabase.parameters.json'
-        overrideParameters: '-hostingPlanName $(hostingPlanName) -skuName "F1" -skuCapacity 1 -administratorLogin $(Database.Admin) -administratorLoginPassword $(Database.Password) -databaseName $(Database.Name) -collation "SQL_Latin1_General_CP1_CI_AS" -edition "Basic" -maxSizeBytes "1073741824" -requestedServiceObjectiveName "Basic" -webSiteName $(WebAppName) -sqlserverName $(SqlServerName)'
-        deploymentMode: 'Complete'
+  - task: SonarCloudPrepare@1
+    inputs:
+      SonarCloud: 'Sonar_WebappWithDatabase'
+      organization: 'aravindhancareer'
+      scannerMode: 'MSBuild'
+      projectKey: 'WebappWithDatabase'
+      projectName: 'WebappWithDatabase'
 
-  - job: Deploy_DEV
-    displayName: Deploy Apps to DEV
-    dependsOn: Create_DEV
-    pool:
-      vmImage: 'windows-2019'
-    steps:
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      projects: |
+        **/*.csproj
+        !**/*SeleniumUiTests.csproj
+      arguments: '--configuration $(BuildConfiguration)'
 
-    - checkout: none
-# new JOB: Deploy App & Database
-    - task: DownloadBuildArtifacts@0    
-      displayName: Download WebApp.zip
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'drop'
-        itemPattern: '**/WebApp.zip'
-        downloadPath: '$(System.DefaultWorkingDirectory)'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'test'
+      projects: '**/*[Tt]est/*.csproj'
+      arguments: '--configuration $(BuildConfiguration)'
 
-    - task: AzureRmWebAppDeployment@3
-      displayName: Deploy WebApp to Azure
-      inputs:
-        azureSubscription: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-        appType: 'app'
-        WebAppName: '$(WebAppName)'
-        Package: '$(System.DefaultWorkingDirectory)/drop/WebApp.zip'
-        TakeAppOfflineFlag: true
-        JSONFiles: '**/appsettings.json'
+  - task: SonarCloudAnalyze@1
 
-    - task: DownloadBuildArtifacts@0    
-      displayName: Download DacPac
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'dacpac'
-        itemPattern: '**/*.dacpac'
-        downloadPath: '$(System.DefaultWorkingDirectory)'
 
-    - task: SqlAzureDacpacDeployment@1
-      displayName: Deploy DacPac to SQL Azure
-      inputs:
-        azureSubscription: 'Free Trial(4f8f86fb-988e-48bd-92a1-f49159c8f1d2)'
-        AuthenticationType: 'server'
-        ServerName: '$(SqlServerName).database.windows.net,1433'
-        DatabaseName: '$(Database.Name)'
-        SqlUsername: '$(Database.Admin)'
-        SqlPassword: '$(Database.Password)'
-        deployType: 'DacpacTask'
-        DeploymentAction: 'Publish'
-        DacpacFile: '$(System.DefaultWorkingDirectory)/dacpac/WebApp.Database.dacpac'
-        IpDetectionMethod: 'AutoDetect'
+  - task: SonarCloudPublish@1
+    inputs:
+      pollingTimeoutSec: '300'
+    
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'publish'
+      publishWebProjects: true
+      arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+    
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+
+- job: Database
+  displayName: 'Build Database'
+  pool:
+    vmImage: 'windows-2019'
+
+  steps:
+
+  - task: MSBuild@1
+    displayName: 'Build solution WebApp.Database.sqlproj'
+    inputs:
+      solution: WebApp.Database/WebApp.Database.sqlproj
+      msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
+  
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact (Dacpac)'
+    inputs:
+      ArtifactName: dacpac
+
+
+- job: Infrastructure
+  displayName: 'Copy Infrastructure files (ARM)'
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: 'AzureResourceGroupDeployment'
+      Contents: 'azuredeploy*.json'
+      TargetFolder: '$(build.artifactstagingdirectory)'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
