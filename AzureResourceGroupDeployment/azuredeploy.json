@@ -68,9 +68,7 @@
         "description": "Describes the performance level for Edition"
       }
     }},
-  "variables": {
-    "AppBaseNameName": "[concat('AppBaseName', uniqueString(resourceGroup().id))]",
-    "mydatabaseName": "[concat('mydatabase', uniqueString(resourceGroup().id))]"},
+  "variables": { },
   "resources": [
     {
       "name": "[parameters('AppBaseNameName')]",
