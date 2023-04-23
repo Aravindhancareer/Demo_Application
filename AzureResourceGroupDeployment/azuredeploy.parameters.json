@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "myazurewebappName": {
+        "value": "myazurewebapp"
+    },
+    "myazurewebappSkuName": {
+        "value": "F1"
+    },
+    "myazuredatabaseAdminLogin": {
+        "value": "myazuredatabaseAdminLogin"
+    },
+    "myazuredatabaseAdminLoginPassword": {
+        "value": "myazuredatabaseAdminLoginPassword"
+    },
+    "myazuredatabaseName": {
+        "value": "myazuredatabase"
+    },
+    "myazuredatabaseCollation": {
+        "value": "SQL_Latin1_General_CP1_CI_AS"
+    },
+    "myazuredatabaseEdition": {
+        "value": "Basic"
+    },
+    "myazuredatabaseRequestedServiceObjectiveName": {
+        "value": "Basic"
+    }
+  }
+}
