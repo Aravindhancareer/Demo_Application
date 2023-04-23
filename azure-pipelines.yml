@@ -34,6 +34,10 @@ jobs:
       scannerMode: 'MSBuild'
       projectKey: 'WebappWithDatabase'
       projectName: 'WebappWithDatabase'
+      extraProperties: |
+        failOnQualityGate: true
+        failOnSeverity: 'MAJOR'
+
 
   - task: DotNetCoreCLI@2
     inputs:
@@ -50,7 +54,6 @@ jobs:
       arguments: '--configuration $(BuildConfiguration)'
 
   - task: SonarCloudAnalyze@1
-
 
   - task: SonarCloudPublish@1
     inputs:
