@@ -25,9 +25,6 @@
     },
     "myazuredbRequestedServiceObjectiveName": {
         "value": "Basic"
-    },
-    "myazuresqlserverName": {
-        "value": "myazuresqlserverName"
     }
   }
 }
