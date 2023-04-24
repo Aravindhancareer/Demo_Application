@@ -1,0 +1,159 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "myazurewebappName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "myazurewebappSkuName": {
+      "type": "string",
+      "defaultValue": "F1",
+      "allowedValues": [
+        "F1",
+        "D1",
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "metadata": {
+        "description": "Describes plan's pricing tier and capacity. Check details at https://azure.microsoft.com/en-us/pricing/details/app-service/"
+      }
+    },
+    "myazuresqlserverAdminLogin": {
+      "type": "string",
+      "minLength": 1
+    },
+    "myazuresqlserverAdminLoginPassword": {
+      "type": "securestring"
+    },
+    "myazuresqlserverName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "myazuredbName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "myazuredbCollation": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "SQL_Latin1_General_CP1_CI_AS"
+    },
+    "myazuredbEdition": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "allowedValues": [
+        "Basic",
+        "Standard",
+        "Premium"
+      ]
+    },
+    "myazuredbRequestedServiceObjectiveName": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "allowedValues": [
+        "Basic",
+        "S0",
+        "S1",
+        "S2",
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "metadata": {
+        "description": "Describes the performance level for Edition"
+      }
+    }},
+  "variables": { },
+  "resources": [
+    {
+      "name": "[parameters('myazurewebappName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-08-01",
+      "sku": {
+        "name": "[parameters('myazurewebappSkuName')]"
+      },
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "myazurewebapp"
+      },
+      "properties": {
+        "name": "[parameters('myazurewebappName')]",
+        "numberOfWorkers": 1
+      }
+    },
+    {
+      "name": "[parameters('myazurewebappName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-08-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('myazurewebappName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceId('Microsoft.Web/serverfarms', parameters('myazurewebappName')))]": "Resource",
+        "displayName": "myazurewebapp"
+      },
+      "properties": {
+        "name": "[parameters('myazurewebappName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('myazurewebappName'))]"
+      }
+    },
+    {
+      "name": "[parameters('myazuresqlserverName')]",
+      "type": "Microsoft.Sql/servers",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2014-04-01-preview",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "sqlservername008"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('myazuresqlserverAdminLogin')]",
+        "administratorLoginPassword": "[parameters('myazuresqlserverAdminLoginPassword')]"
+      },
+      "resources": [
+        {
+          "name": "AllowAllWindowsAzureIps",
+          "type": "firewallrules",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers', parameters('myazuresqlserverName'))]"
+          ],
+          "properties": {
+            "startIpAddress": "0.0.0.0",
+            "endIpAddress": "0.0.0.0"
+          }
+        },
+        {
+          "name": "[parameters('myazuredbName')]",
+          "type": "databases",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers', parameters('myazuresqlserverName'))]"
+          ],
+          "tags": {
+            "displayName": "myazuredb"
+          },
+          "properties": {
+            "collation": "[parameters('myazuredbCollation')]",
+            "edition": "[parameters('myazuredbEdition')]",
+            "maxSizeBytes": "1073741824",
+            "requestedServiceObjectiveName": "[parameters('myazuredbRequestedServiceObjectiveName')]"
+          }
+        }
+      ]
+    }],
+  "outputs": {}
+}
