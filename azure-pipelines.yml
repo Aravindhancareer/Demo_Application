@@ -11,8 +11,7 @@ pr:
   branches:
     include:
     - master
-    exclude:
-    - Test
+    - test
 
 jobs:
 - job: WebApp
