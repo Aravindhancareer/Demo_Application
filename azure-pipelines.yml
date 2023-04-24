@@ -6,7 +6,13 @@
 trigger:
   branches:
     include:
-    - Master
+    - master
+pr:
+  branches:
+    include:
+    - master
+    exclude:
+    - Test
 
 jobs:
 - job: WebApp
