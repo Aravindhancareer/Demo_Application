@@ -14,4 +14,4 @@ foreach($pathobject in $paths)
     $node = $doc.SelectSingleNode("//Project/PropertyGroup")
     $node.AppendChild($child)
     $doc.Save($path)
-}
+} 
