@@ -1,2 +1,1 @@
-Hello , test file 
-new line added 
+Hello , test file.
